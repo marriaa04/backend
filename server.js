@@ -117,6 +117,36 @@ function randomNews() {
   }));
 }
 
+let newsFeed = [];
+let newsInterval = null;
+
+function pushRandomNews() {
+  const item = randomNews()[0];
+  newsFeed.unshift(item);
+  if (newsFeed.length > 20) newsFeed.pop(); // Keep only latest 20
+}
+
+// Start news generator
+app.post("/api/news/start", (req, res) => {
+  if (newsInterval) return res.status(400).json({ error: "Already generating news" });
+  newsInterval = setInterval(pushRandomNews, 2000); // every 2 seconds
+  res.json({ started: true });
+});
+
+// Stop news generator
+app.post("/api/news/stop", (req, res) => {
+  if (newsInterval) {
+    clearInterval(newsInterval);
+    newsInterval = null;
+  }
+  res.json({ stopped: true });
+});
+
+// Get current news feed
+app.get("/api/news", (req, res) => {
+  res.json(newsFeed);
+});
+
 // Start generator
 app.post("/api/candidates/generate", (req, res) => {
   if (generatorInterval) return res.status(400).json({ error: "Already generating" });
@@ -180,10 +210,6 @@ app.post("/api/vote", (req, res) => {
   db.prepare("INSERT INTO votes (userId, candidateId) VALUES (?, ?)").run(userId, candidateId);
   db.prepare("UPDATE users SET hasVoted = 1 WHERE id = ?").run(userId);
   res.json({ success: true });
-});
-
-app.get("/api/news", (req, res) => {
-  res.json(randomNews());
 });
 
 const PORT = process.env.PORT || 4000;

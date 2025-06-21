@@ -93,6 +93,29 @@ function randomPhoto() {
   const num = Math.floor(Math.random() * 99);
   return `https://randomuser.me/api/portraits/${gender}/${num}.jpg`;
 }
+function randomNews() {
+  const headlines = [
+    "Aliens land in Bucharest, demand sarmale!",
+    "Party A promises free WiFi for all pets.",
+    "Scientists discover coffee cures Monday blues.",
+    "Party B launches campaign on Mars.",
+    "Famous singer joins Party C, releases new anthem.",
+    "Invisible car spotted on city streets.",
+    "Party D proposes 3-day weekends for everyone.",
+    "New study: Laughter increases voting turnout.",
+    "Party E to build world's largest pizza.",
+    "Secret tunnels found under Parliament."
+  ];
+  const authors = [
+    "Gigi Popescu", "Maria Ionescu", "Ion Vasilescu", "Elena Georgescu", "Radu Stan", "Ana Dumitru"
+  ];
+  return Array.from({ length: 5 }, () => ({
+    id: Math.random().toString(36).slice(2),
+    headline: headlines[Math.floor(Math.random() * headlines.length)],
+    author: authors[Math.floor(Math.random() * authors.length)],
+    date: new Date(Date.now() - Math.floor(Math.random() * 100000000)).toLocaleString()
+  }));
+}
 
 // Start generator
 app.post("/api/candidates/generate", (req, res) => {
@@ -157,6 +180,10 @@ app.post("/api/vote", (req, res) => {
   db.prepare("INSERT INTO votes (userId, candidateId) VALUES (?, ?)").run(userId, candidateId);
   db.prepare("UPDATE users SET hasVoted = 1 WHERE id = ?").run(userId);
   res.json({ success: true });
+});
+
+app.get("/api/news", (req, res) => {
+  res.json(randomNews());
 });
 
 const PORT = process.env.PORT || 4000;

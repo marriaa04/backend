@@ -5,7 +5,6 @@ const cors = require("cors");
 const Database = require('better-sqlite3');
 const db = new Database('data.db'); // This will create data.db in your backend folder if it doesn't exist
 
-// Create tables if they don't exist
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

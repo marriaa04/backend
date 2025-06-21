@@ -2,6 +2,24 @@ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const cors = require("cors");
+const Database = require('better-sqlite3');
+const db = new Database('data.db'); // This will create data.db in your backend folder if it doesn't exist
+
+// Create tables if they don't exist
+db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cnp TEXT UNIQUE,
+  password TEXT,
+  hasVoted INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER,
+  candidateId INTEGER,
+  FOREIGN KEY(userId) REFERENCES users(id)
+);
+`);
 
 const app = express();
 app.use(cors());
@@ -100,6 +118,46 @@ app.post("/api/candidates/stop", (req, res) => {
     generatorInterval = null;
   }
   res.json({ stopped: true });
+});
+
+// Register
+app.post("/api/register", (req, res) => {
+  const { cnp, password } = req.body;
+  try {
+    const stmt = db.prepare("INSERT INTO users (cnp, password) VALUES (?, ?)");
+    const info = stmt.run(cnp, password);
+    res.json({ id: info.lastInsertRowid, cnp });
+  } catch (e) {
+    res.status(400).json({ error: "CNP already registered" });
+  }
+});
+
+// Login
+app.post("/api/login", (req, res) => {
+  const { cnp, password } = req.body;
+  const user = db.prepare("SELECT * FROM users WHERE cnp = ? AND password = ?").get(cnp, password);
+  if (user) {
+    res.json({ id: user.id, cnp: user.cnp, hasVoted: !!user.hasVoted });
+  } else {
+    res.status(401).json({ error: "Invalid credentials" });
+  }
+});
+
+// Vote
+app.post("/api/vote", (req, res) => {
+  console.log("Vote request:", req.body); // Add this line
+  const { userId, candidateId } = req.body;
+  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  if (user.hasVoted) return res.status(400).json({ error: "User already voted" });
+
+  // Check if candidate exists in memory
+  const candidate = candidates.find(c => c.id === candidateId);
+  if (!candidate) return res.status(404).json({ error: "Candidate not found" });
+
+  db.prepare("INSERT INTO votes (userId, candidateId) VALUES (?, ?)").run(userId, candidateId);
+  db.prepare("UPDATE users SET hasVoted = 1 WHERE id = ?").run(userId);
+  res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 4000;
